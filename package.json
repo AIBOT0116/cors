@@ -1,20 +1,5 @@
 {
-    "name": "cors-proxy",
-    "version": "1.0.0",
-    "description": "A simple CORS proxy server on Vercel",
-    "main": "index.js",
-    "scripts": {
-      "start": "vercel dev"
-    },
-    "dependencies": {
-      "http-proxy-middleware": "^2.0.0",
-      "cors": "^2.8.5"
-    },
-    "devDependencies": {},
-    "engines": {
-      "node": "18.x"
-    },
-    "author": "Your Name",
-    "license": "ISC"
-  }
-  
+  "name": "cors-proxy",
+  "version": "1.0.0",
+  "type": "module"
+}

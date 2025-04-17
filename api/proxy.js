@@ -1,24 +1,18 @@
 const { createProxyMiddleware } = require('http-proxy-middleware');
 
-module.exports = (req, res) => {
-  // Extract target URL from query parameter or path
-  let targetUrl = req.query.url || req.url.slice(1);
-
-  // Validate URL
-  if (!targetUrl || !targetUrl.startsWith('http')) {
-    return res.status(400).json({ error: 'Invalid URL parameter' });
+module.exports = async (req, res) => {
+  // Extract target URL from query parameter
+  const targetUrl = req.query.url;
+  
+  if (!targetUrl) {
+    return res.status(400).json({ error: 'Missing URL parameter. Use ?url=https://example.com' });
   }
-
-  // Remove our own domain if present
-  targetUrl = targetUrl.replace(/^https?:\/\/[^/]+/, '');
 
   // Create proxy middleware
   const proxy = createProxyMiddleware({
     target: targetUrl,
     changeOrigin: true,
-    pathRewrite: (path, req) => {
-      return targetUrl.includes('?') ? targetUrl.split('?')[0] : targetUrl;
-    },
+    pathRewrite: { '^/api/proxy': '' }, // Remove the /api/proxy prefix
     onProxyRes: (proxyRes) => {
       // Add CORS headers
       proxyRes.headers['access-control-allow-origin'] = '*';
@@ -27,7 +21,7 @@ module.exports = (req, res) => {
     logger: console
   });
 
-  // Handle errors
+  // Handle the request
   proxy(req, res, (err) => {
     if (err) {
       console.error('Proxy error:', err);

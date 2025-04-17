@@ -1,7 +1,3 @@
-export const config = {
-  runtime: 'nodejs',
-};
-
 export default async function handler(req, res) {
   const { url } = req.query;
 
@@ -26,7 +22,7 @@ export default async function handler(req, res) {
       headers[key] = value;
     });
 
-    // Set CORS headers
+    // CORS headers
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', '*');

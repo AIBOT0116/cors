@@ -1,22 +1,29 @@
 export default async function handler(req, res) {
-  const { url } = req.query;
+  const path = req.url.slice(1); // Remove the leading "/"
+  const targetUrl = decodeURIComponent(path);
 
-  if (!url) {
-    return res.status(400).json({ error: 'Missing ?url=' });
+  if (!targetUrl.startsWith("http://") && !targetUrl.startsWith("https://")) {
+    return res.status(400).json({ error: "Invalid URL. Must start with http or https." });
   }
 
   try {
-    const targetUrl = decodeURIComponent(url);
-    const response = await fetch(targetUrl);
+    const response = await fetch(targetUrl, {
+      method: req.method,
+      headers: { ...req.headers, host: new URL(targetUrl).host }
+    });
 
-    const contentType = response.headers.get('content-type') || 'application/octet-stream';
-    const data = await response.arrayBuffer();
+    const contentType = response.headers.get("content-type") || "application/octet-stream";
+    const buffer = await response.arrayBuffer();
 
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Content-Type', contentType);
-    res.send(Buffer.from(data));
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Failed to fetch URL' });
+    // Add CORS headers
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Headers", "*");
+    res.setHeader("Access-Control-Allow-Methods", "*");
+    res.setHeader("Content-Type", contentType);
+
+    res.status(response.status).send(Buffer.from(buffer));
+  } catch (err) {
+    console.error("Proxy error:", err);
+    res.status(500).json({ error: "Failed to proxy request" });
   }
 }

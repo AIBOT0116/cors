@@ -1,34 +1,42 @@
-import { createProxyMiddleware } from 'http-proxy-middleware';
-
 export const config = {
-  runtime: 'edge', // 'nodejs' is also supported if needed
+  runtime: 'nodejs',
 };
 
-export default async function handler(req) {
-  const { searchParams } = new URL(req.url);
-  const target = searchParams.get('url');
+export default async function handler(req, res) {
+  const { url } = req.query;
 
-  if (!target) {
-    return new Response(JSON.stringify({ error: 'Missing ?url= parameter' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    });
+  if (!url) {
+    return res.status(400).json({ error: 'Missing ?url= parameter' });
   }
 
-  const fetchUrl = new URL(target);
-  const proxyRes = await fetch(fetchUrl.toString(), {
-    method: req.method,
-    headers: req.headers,
-    body: ['GET', 'HEAD'].includes(req.method) ? undefined : req.body,
-  });
+  try {
+    const proxyRes = await fetch(url, {
+      method: req.method,
+      headers: {
+        ...req.headers,
+        host: new URL(url).host,
+      },
+      body: ['GET', 'HEAD'].includes(req.method) ? undefined : req,
+    });
 
-  const headers = new Headers(proxyRes.headers);
-  headers.set('Access-Control-Allow-Origin', '*');
-  headers.set('Access-Control-Allow-Headers', '*');
-  headers.set('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+    const data = await proxyRes.arrayBuffer();
+    const headers = {};
 
-  return new Response(proxyRes.body, {
-    status: proxyRes.status,
-    headers,
-  });
+    proxyRes.headers.forEach((value, key) => {
+      headers[key] = value;
+    });
+
+    // Set CORS headers
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', '*');
+
+    Object.entries(headers).forEach(([key, value]) => {
+      res.setHeader(key, value);
+    });
+
+    res.status(proxyRes.status).send(Buffer.from(data));
+  } catch (err) {
+    res.status(500).json({ error: 'Proxy error', details: err.message });
+  }
 }

@@ -1,18 +1,22 @@
-import express from 'express';
-import cors from 'cors';
-import { createServer } from 'http';
+import fetch from 'node-fetch';
 
-const app = express();
+export default async function handler(req, res) {
+  const { url } = req.query;
 
-// Use CORS middleware (customize origin if needed)
-app.use(cors());
+  if (!url) {
+    return res.status(400).json({ error: 'No URL provided' });
+  }
 
-// Sample route
-app.get('/', (req, res) => {
-  res.json({ message: 'CORS-enabled server on Vercel!' });
-});
+  try {
+    const response = await fetch(url);
 
-// For Vercel serverless handler
-export default function handler(req, res) {
-  return app(req, res);
+    // Stream the response back to the client
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Content-Type', response.headers.get('content-type') || 'application/octet-stream');
+
+    response.body.pipe(res);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch external resource' });
+  }
 }

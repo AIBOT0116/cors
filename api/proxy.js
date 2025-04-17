@@ -1,28 +1,21 @@
-const axios = require('axios');
+import { createProxyMiddleware } from 'http-proxy-middleware';
+import cors from 'cors';
 
-module.exports = async (req, res) => {
-  const targetUrl = req.query.url;
+export default function handler(req, res) {
+  // Enable CORS for all domains
+  cors()(req, res, () => {});
 
-  if (!targetUrl) {
-    return res.status(400).json({ error: 'Missing "url" query parameter' });
-  }
+  const proxy = createProxyMiddleware({
+    target: req.query.url,  // Proxy URL (to be passed in the query)
+    changeOrigin: true,     // Modify the origin to match the target
+    secure: false,          // Allow self-signed certificates (optional)
+    onProxyRes(proxyRes, req, res) {
+      // Add CORS headers to the proxied response
+      proxyRes.headers['Access-Control-Allow-Origin'] = '*';
+      proxyRes.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS';
+      proxyRes.headers['Access-Control-Allow-Headers'] = 'Origin, X-Requested-With, Content-Type, Accept';
+    },
+  });
 
-  try {
-    // Set CORS headers
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Content-Length, X-Requested-With');
-    
-    if (req.method === 'OPTIONS') {
-      return res.sendStatus(200);
-    }
-
-    // Proxy the request using axios
-    const response = await axios.get(targetUrl);
-
-    // Send the response from the target URL
-    res.status(response.status).json(response.data);
-  } catch (error) {
-    res.status(500).json({ error: 'Error fetching target URL', details: error.message });
-  }
-};
+  return proxy(req, res);
+}

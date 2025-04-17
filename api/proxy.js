@@ -1,29 +1,25 @@
-export default async function handler(req, res) {
-  const path = req.url.slice(1); // Remove the leading "/"
-  const targetUrl = decodeURIComponent(path);
+const request = require('request');
 
-  if (!targetUrl.startsWith("http://") && !targetUrl.startsWith("https://")) {
-    return res.status(400).json({ error: "Invalid URL. Must start with http or https." });
+module.exports = async (req, res) => {
+  const targetUrl = req.query.url;
+
+  if (!targetUrl) {
+    return res.status(400).json({ error: 'Missing "url" query parameter' });
   }
 
-  try {
-    const response = await fetch(targetUrl, {
-      method: req.method,
-      headers: { ...req.headers, host: new URL(targetUrl).host }
-    });
-
-    const contentType = response.headers.get("content-type") || "application/octet-stream";
-    const buffer = await response.arrayBuffer();
-
-    // Add CORS headers
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Access-Control-Allow-Headers", "*");
-    res.setHeader("Access-Control-Allow-Methods", "*");
-    res.setHeader("Content-Type", contentType);
-
-    res.status(response.status).send(Buffer.from(buffer));
-  } catch (err) {
-    console.error("Proxy error:", err);
-    res.status(500).json({ error: "Failed to proxy request" });
+  // Set CORS headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Content-Length, X-Requested-With');
+  
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
   }
-}
+
+  // Proxy the request
+  request(targetUrl)
+    .on('error', (err) => {
+      res.status(500).json({ error: 'Error fetching target URL', details: err.message });
+    })
+    .pipe(res);
+};

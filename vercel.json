@@ -1,10 +1,12 @@
 {
     "version": 2,
     "routes": [
-      {
-        "src": "/(.*)",
-        "dest": "/api/cors.js"
-      }
+        {
+            "src": "/proxy",
+            "methods": [
+                "GET"
+            ],
+            "dest": "/api/proxy.js"
+        }
     ]
-  }
-  
+}

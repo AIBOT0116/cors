@@ -1,49 +1,48 @@
-import fetch from 'node-fetch';
+const fetch = require('node-fetch');
 
-export default async function handler(req, res) {
-  // Set CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-
-  // Handle preflight requests
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
+module.exports = async (req, res) => {
   try {
-    // Get target URL from query params
-    const targetUrl = req.query.url;
-    if (!targetUrl) {
-      return res.status(400).json({ error: 'Missing URL parameter' });
+    // Set CORS headers
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+    // Handle preflight requests
+    if (req.method === 'OPTIONS') {
+      return res.status(200).end();
     }
 
-    // Validate URL format
+    // Get target URL
+    const targetUrl = req.query.url;
+    if (!targetUrl) {
+      return res.status(400).json({ error: 'Missing URL parameter. Use ?url=https://example.com' });
+    }
+
+    // Validate URL
     try {
       new URL(targetUrl);
     } catch (e) {
       return res.status(400).json({ error: 'Invalid URL format' });
     }
 
-    // Forward the request
+    // Make the request
     const response = await fetch(targetUrl, {
-      method: req.method,
       headers: {
         ...(req.headers['content-type'] && { 'Content-Type': req.headers['content-type'] }),
         ...(req.headers['authorization'] && { 'Authorization': req.headers['authorization'] })
       },
-      body: req.method !== 'GET' ? JSON.stringify(req.body) : undefined
+      body: req.method !== 'GET' && req.method !== 'HEAD' ? req.body : undefined
     });
 
-    // Forward the response
+    // Forward response
     const data = await response.text();
     res.status(response.status).send(data);
-
+    
   } catch (error) {
     console.error('Proxy error:', error);
     res.status(500).json({ 
-      error: 'Internal proxy error',
+      error: 'Proxy request failed',
       details: error.message 
     });
   }
-}
+};

@@ -1,48 +1,65 @@
-const fetch = require('node-fetch');
+const http = require('http');
+const https = require('https');
+const { parse } = require('url');
 
 module.exports = async (req, res) => {
+  // Set CORS headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', '*');
+
+  // Handle preflight
+  if (req.method === 'OPTIONS') return res.end();
+
+  const targetUrl = req.query.url;
+  if (!targetUrl) return res.status(400).json({ error: 'URL parameter required' });
+
   try {
-    // Set CORS headers
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    const parsedUrl = parse(targetUrl);
+    const options = {
+      hostname: parsedUrl.hostname,
+      port: parsedUrl.port || (parsedUrl.protocol === 'https:' ? 443 : 80),
+      path: parsedUrl.path,
+      method: req.method,
+      headers: { ...req.headers, host: parsedUrl.hostname }
+    };
 
-    // Handle preflight requests
-    if (req.method === 'OPTIONS') {
-      return res.status(200).end();
-    }
+    // Remove problematic headers
+    delete options.headers['content-length'];
+    delete options.headers['host'];
 
-    // Get target URL
-    const targetUrl = req.query.url;
-    if (!targetUrl) {
-      return res.status(400).json({ error: 'Missing URL parameter. Use ?url=https://example.com' });
-    }
-
-    // Validate URL
-    try {
-      new URL(targetUrl);
-    } catch (e) {
-      return res.status(400).json({ error: 'Invalid URL format' });
-    }
-
-    // Make the request
-    const response = await fetch(targetUrl, {
-      headers: {
-        ...(req.headers['content-type'] && { 'Content-Type': req.headers['content-type'] }),
-        ...(req.headers['authorization'] && { 'Authorization': req.headers['authorization'] })
-      },
-      body: req.method !== 'GET' && req.method !== 'HEAD' ? req.body : undefined
-    });
-
-    // Forward response
-    const data = await response.text();
-    res.status(response.status).send(data);
+    const protocol = parsedUrl.protocol === 'https:' ? https : http;
     
-  } catch (error) {
-    console.error('Proxy error:', error);
-    res.status(500).json({ 
-      error: 'Proxy request failed',
-      details: error.message 
+    const proxyReq = protocol.request(options, (proxyRes) => {
+      // Forward status code
+      res.statusCode = proxyRes.statusCode;
+      
+      // Forward headers
+      Object.keys(proxyRes.headers).forEach(key => {
+        if (!['content-encoding'].includes(key.toLowerCase())) {
+          res.setHeader(key, proxyRes.headers[key]);
+        }
+      });
+      
+      // Pipe the response
+      proxyRes.pipe(res);
     });
+
+    // Handle errors
+    proxyReq.on('error', (e) => {
+      console.error('Proxy error:', e);
+      res.status(500).json({ error: 'Proxy failed', details: e.message });
+    });
+
+    // Pipe the request body for POST/PUT
+    if (['POST', 'PUT'].includes(req.method)) {
+      req.pipe(proxyReq);
+    } else {
+      proxyReq.end();
+    }
+
+  } catch (e) {
+    console.error('Setup error:', e);
+    res.status(500).json({ error: 'Invalid setup', details: e.message });
   }
 };

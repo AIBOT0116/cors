@@ -10,6 +10,10 @@
     {
       "src": "/api/(.*)",
       "dest": "/api/proxy.js"
+    },
+    {
+      "src": "/",
+      "dest": "/api/proxy.js"
     }
   ]
 }

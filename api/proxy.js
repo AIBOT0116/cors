@@ -1,31 +1,23 @@
-const { createProxyMiddleware } = require('http-proxy-middleware');
-
-module.exports = async (req, res) => {
-  // Extract target URL from query parameter
-  const targetUrl = req.query.url;
+export default async (req, res) => {
+  // Set CORS headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   
-  if (!targetUrl) {
-    return res.status(400).json({ error: 'Missing URL parameter. Use ?url=https://example.com' });
+  // Handle preflight
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
   }
 
-  // Create proxy middleware
-  const proxy = createProxyMiddleware({
-    target: targetUrl,
-    changeOrigin: true,
-    pathRewrite: { '^/api/proxy': '' }, // Remove the /api/proxy prefix
-    onProxyRes: (proxyRes) => {
-      // Add CORS headers
-      proxyRes.headers['access-control-allow-origin'] = '*';
-      proxyRes.headers['access-control-allow-methods'] = 'GET, POST, PUT, DELETE, OPTIONS';
-    },
-    logger: console
-  });
+  const { url } = req.query;
+  if (!url) {
+    return res.status(400).json({ error: 'URL parameter required' });
+  }
 
-  // Handle the request
-  proxy(req, res, (err) => {
-    if (err) {
-      console.error('Proxy error:', err);
-      res.status(500).json({ error: 'Proxy error', details: err.message });
-    }
-  });
+  try {
+    const response = await fetch(url);
+    const data = await response.text();
+    res.status(response.status).send(data);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 };

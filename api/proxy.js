@@ -6,7 +6,7 @@ module.exports = async (req, res) => {
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', '*');
+  res.setHeader("Access-Control-Allow-Headers", 'Content-Type, Authorization');
 
   // Handle preflight
   if (req.method === 'OPTIONS') return res.end();
@@ -29,18 +29,18 @@ module.exports = async (req, res) => {
     delete options.headers['host'];
 
     const protocol = parsedUrl.protocol === 'https:' ? https : http;
-    
+
     const proxyReq = protocol.request(options, (proxyRes) => {
       // Forward status code
       res.statusCode = proxyRes.statusCode;
-      
+
       // Forward headers
       Object.keys(proxyRes.headers).forEach(key => {
         if (!['content-encoding'].includes(key.toLowerCase())) {
           res.setHeader(key, proxyRes.headers[key]);
         }
       });
-      
+
       // Pipe the response
       proxyRes.pipe(res);
     });

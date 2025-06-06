@@ -4,7 +4,7 @@ const { parse } = require('url');
 
 module.exports = async (req, res) => {
   // Set CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Origin', 'https://www.sonyliv.com');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader("Access-Control-Allow-Headers", 'Content-Type, Authorization');
 
@@ -24,8 +24,9 @@ module.exports = async (req, res) => {
       headers: {
         ...req.headers,
         host: parsedUrl.hostname,
-        'User-Agent': req.headers['User-Agent'] || 'YourCustomUserAgent', // Mimic user agent
-        'Referer': req.headers['Referer'] || 'https://example.com' // Set a valid referrer
+        'User-Agent': req.headers['User-Agent'] || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Referer': req.headers['Referer'] || 'https://www.sonyliv.com/', // Replace with actual video page
+        'Origin': req.headers['Origin'] || 'https://www.sonyliv.com', // Origin should be the main site
       }
       // headers: { ...req.headers, host: parsedUrl.hostname }
     };

@@ -21,7 +21,13 @@ module.exports = async (req, res) => {
       port: parsedUrl.port || (parsedUrl.protocol === 'https:' ? 443 : 80),
       path: parsedUrl.path,
       method: req.method,
-      headers: { ...req.headers, host: parsedUrl.hostname }
+      headers: {
+        ...req.headers,
+        host: parsedUrl.hostname,
+        'User-Agent': req.headers['User-Agent'] || 'YourCustomUserAgent', // Mimic user agent
+        'Referer': req.headers['Referer'] || 'https://example.com' // Set a valid referrer
+      }
+      // headers: { ...req.headers, host: parsedUrl.hostname }
     };
 
     // Remove problematic headers

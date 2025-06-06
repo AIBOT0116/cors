@@ -21,15 +21,9 @@ module.exports = async (req, res) => {
       port: parsedUrl.port || (parsedUrl.protocol === 'https:' ? 443 : 80),
       path: parsedUrl.path,
       method: req.method,
-      headers: {
-        ...req.headers,
-        host: parsedUrl.hostname,
-        'User-Agent': req.headers['User-Agent'] || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'Referer': req.headers['Referer'] || 'https://www.sonyliv.com/', // Replace with actual video page
-        'Origin': req.headers['Origin'] || 'https://www.sonyliv.com', // Origin should be the main site
-      }
-      // headers: { ...req.headers, host: parsedUrl.hostname }
+      headers: { ...req.headers, host: parsedUrl.hostname }
     };
+    options.headers['Origin'] = 'https://www.sonyliv.com'; // Use the expected Origin header
 
     // Remove problematic headers
     delete options.headers['content-length'];

@@ -23,7 +23,6 @@ module.exports = async (req, res) => {
       method: req.method,
       headers: { ...req.headers, host: parsedUrl.hostname }
     };
-    options.headers['Origin'] = 'https://www.sonyliv.com'; // Use the expected Origin header
 
     // Remove problematic headers
     delete options.headers['content-length'];

@@ -1,65 +1,40 @@
-const http = require('http');
-const https = require('https');
-const { parse } = require('url');
+const express = require('express');
+const fetch = require('node-fetch');
 
-module.exports = async (req, res) => {
-  // Set CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader("Access-Control-Allow-Headers", 'Content-Type, Authorization');
+const app = express();
 
-  // Handle preflight
-  if (req.method === 'OPTIONS') return res.end();
+app.use((req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "*");
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(204);
+  }
+  next();
+});
 
-  const targetUrl = req.query.url;
-  if (!targetUrl) return res.status(400).json({ error: 'URL parameter required' });
+app.get('/:get', async (req, res) => {
+  const getParam = req.params.get;
+  const mpdUrl = `https://l02.dp.sooka.my/${getParam}`;
 
   try {
-    const parsedUrl = parse(targetUrl);
-    const options = {
-      hostname: parsedUrl.hostname,
-      port: parsedUrl.port || (parsedUrl.protocol === 'https:' ? 443 : 80),
-      path: parsedUrl.path,
-      method: req.method,
-      headers: { ...req.headers, host: parsedUrl.hostname }
-    };
-
-    // Remove problematic headers
-    delete options.headers['content-length'];
-    delete options.headers['host'];
-
-    const protocol = parsedUrl.protocol === 'https:' ? https : http;
-
-    const proxyReq = protocol.request(options, (proxyRes) => {
-      // Forward status code
-      res.statusCode = proxyRes.statusCode;
-
-      // Forward headers
-      Object.keys(proxyRes.headers).forEach(key => {
-        if (!['content-encoding'].includes(key.toLowerCase())) {
-          res.setHeader(key, proxyRes.headers[key]);
-        }
-      });
-
-      // Pipe the response
-      proxyRes.pipe(res);
+    const response = await fetch(mpdUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36'
+      },
+      timeout: 5000
     });
 
-    // Handle errors
-    proxyReq.on('error', (e) => {
-      console.error('Proxy error:', e);
-      res.status(500).json({ error: 'Proxy failed', details: e.message });
-    });
-
-    // Pipe the request body for POST/PUT
-    if (['POST', 'PUT'].includes(req.method)) {
-      req.pipe(proxyReq);
-    } else {
-      proxyReq.end();
+    if (!response.ok) {
+      return res.status(502).send("Failed to fetch resource.");
     }
 
-  } catch (e) {
-    console.error('Setup error:', e);
-    res.status(500).json({ error: 'Invalid setup', details: e.message });
+    res.setHeader("Content-Type", "application/dash+xml");
+    const body = await response.text();
+    res.send(body);
+  } catch (err) {
+    res.status(502).send("Failed to fetch resource.");
   }
-};
+});
+
+module.exports = app;
